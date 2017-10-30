@@ -2,9 +2,9 @@
 #### tf\_graph.py
 Basic graph operation
 #### math\_op.py
-math operations 
+math operations
 #### transform.py
-data type transformation and data size/shape/concat/tile etc. transformations   
+data type transformation and data size/shape/concat/tile etc. transformations
 #### variables.py
 variable operation and share varaibles
 #### neural\_network.py
