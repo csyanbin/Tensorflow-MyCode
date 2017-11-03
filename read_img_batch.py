@@ -17,32 +17,69 @@ tf.reset_default_graph()
 batch_size = 10
 num_epochs = 1
 
-for i in range(100):
-    _x = np.random.randint(0, 256, size=(10, 10, 4))
-    plt.imsave("example/image_{}.jpg".format(i), _x)
+list_file = 'img_list.txt2'
 
-images = tf.train.match_filenames_once('example/*.jpg')
+def generate_data():
+    """ generate examples images """
+    for i in range(100):
+        _x = np.random.randint(0, 256, size=(10, 10, 4))
+        plt.imsave("example/image_{}.jpg".format(i), _x)
+    
 
-fname_q = tf.train.string_input_producer(images, num_epochs=num_epochs, shuffle=True)
+def read_labeled_image_list(image_list_file):
+    """Reads a .txt file containing pathes and labeles
+    Args:
+       image_list_file: a .txt file with one /path/to/image per line
+       label: optionally, if set label will be pasted after each line
+    Returns:
+       List with all filenames in file image_list_file
+    """
+    f = open(image_list_file, 'r')
+    filenames = []
+    labels = []
+    for line in f:
+        filename, label = line[:-1].split(' ')
+        filenames.append(filename)
+        labels.append(int(label))
+    return filenames, labels
 
-def read_data(fname_q):
-    reader = tf.WholeFileReader()
-    fname, value = reader.read(fname_q)
-    print(fname,value)
-    img = tf.image.decode_image(value)
+def read_images_from_disk(input_queue):
+    """Consumes a single filename and label as a ' '-delimited string.
+    Args:
+      filename_and_label_tensor: A scalar string tensor.
+    Returns:
+      Two tensors: the decoded image, and the string label.
+    """
+    label = input_queue[1]
+    fname = input_queue[0]
+    file_contents = tf.read_file(input_queue[0])
+    # example = tf.image.decode_png(file_contents, channels=3)
+    example = tf.image.decode_image(file_contents, channels=4)
+    return example, label, fname
 
-    return img, fname
 
-# use single reader 
-# img, fname = read_data(fname_q)
-# img_batch, fname_batch = tf.train.batch([img, fname], num_threads=3, shapes=([10, 10, 4], []), batch_size=batch_size)
+# split image path and label from list file
+image_list, label_list = read_labeled_image_list(list_file)
+# convert to tensor
+images = tf.convert_to_tensor(image_list, dtype=tf.string)
+labels = tf.convert_to_tensor(label_list, dtype=tf.int32)
+# wrap image and label as input queue
+input_queue = tf.train.slice_input_producer([images, labels],
+                                            num_epochs=num_epochs,
+                                            shuffle=False)
 
-# use multiple reader
-img_list = [read_data(fname_q)
+################# single reader ######################
+## decode image, label, filename
+# img, label, fname = read_images_from_disk(input_queue)
+## make single tensor as batch data
+# img_batch, label_batch, fname_batch = tf.train.batch([img, label, fname], num_threads=3, shapes=([10, 10, 4], [], []), batch_size=batch_size)
+
+################# use multiple reader ##########################
+data_list = [read_images_from_disk(input_queue)
                 for _ in range(2) ]
-img_batch, fname_batch = tf.train.batch_join(img_list, shapes=([10, 10, 4], []), batch_size=batch_size)
+img_batch, label_batch, fname_batch = tf.train.batch_join(data_list, shapes=([10, 10, 4], [], []), batch_size=batch_size)
 
-
+batch_size = 10
 with tf.Session() as sess:
     sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
