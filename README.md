@@ -1,4 +1,8 @@
 # MY Tensorflow Code library to save example codes for reference
+#### TODO
+image reader, preprocessing different, VGG/incep/resnet
+video reader, flow, preprocessing VGG,incep,resnet, Ncrop
+
 #### tf\_graph.py
 Basic graph operation
 #### math\_op.py
