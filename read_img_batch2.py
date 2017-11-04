@@ -1,3 +1,7 @@
+"""
+    tensorflow image reader
+    using tf.train.string_input_producer
+"""
 from __future__ import print_function
 import tensorflow as tf
 import numpy as np
@@ -8,16 +12,6 @@ import matplotlib.pyplot as plt
 
 import random
 
-np.random.seed(1)
-random.seed(1)
-tf.set_random_seed(1)
-tf.reset_default_graph()
-
-# Hyperparams
-batch_size = 10
-num_epochs = 1
-
-list_file = 'img_list.txt2'
 
 def generate_data():
     """ generate examples images """
@@ -40,20 +34,40 @@ def read_my_file_format(filename_and_label_tensor):
   example = tf.image.decode_png(file_contents)
   return example, label, filename    
 
-input_list = [line.strip() for line in open(list_file).readlines()]
-input_queue = tf.train.string_input_producer(input_list, num_epochs=num_epochs, shuffle=False)
+
+def prepare_batch_data(list_file, batch_size, num_epochs=1, num_threads=1):
+    input_list = [line.strip() for line in open(list_file).readlines()]
+    input_queue = tf.train.string_input_producer(input_list, num_epochs=num_epochs, shuffle=False)
+    
+    
+    ################# single reader ######################
+    img, label, fname = read_my_file_format(input_queue.dequeue())
+    img_batch, label_batch, fname_batch = tf.train.batch([img, label, fname], num_threads=num_threads, shapes=([10, 10, 4], [], []), batch_size=batch_size)
+    
+    ################# use multiple reader ##########################
+    # data_list = [read_images_from_disk(input_queue)
+    #                 for _ in range(num_threads) ]
+    # img_batch, label_batch, fname_batch = tf.train.batch_join(data_list, shapes=([10, 10, 4], [], []), batch_size=batch_size)
+
+    return img_batch, label_batch, fname_batch
 
 
-################# single reader ######################
-img, label, fname = read_my_file_format(input_queue.dequeue())
-img_batch, label_batch, fname_batch = tf.train.batch([img, label, fname], num_threads=3, shapes=([10, 10, 4], [], []), batch_size=batch_size)
 
-################# use multiple reader ##########################
-# data_list = [read_images_from_disk(input_queue)
-#                 for _ in range(2) ]
-# img_batch, label_batch, fname_batch = tf.train.batch_join(data_list, shapes=([10, 10, 4], [], []), batch_size=batch_size)
 
+# fix random seed for testing
+np.random.seed(1)
+random.seed(1)
+tf.set_random_seed(1)
+tf.reset_default_graph()
+
+# Hyperparams
 batch_size = 10
+num_epochs = 1
+list_file = 'img_list.txt2'
+batch_size = 10
+num_threads = 1
+
+img_batch, label_batch, fname_batch = prepare_batch_data(list_file, batch_size, num_epochs, num_threads)
 with tf.Session() as sess:
     sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
